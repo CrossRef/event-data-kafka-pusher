@@ -7,11 +7,8 @@
   (:import [org.apache.kafka.clients.consumer KafkaConsumer Consumer ConsumerRecords])
   (:gen-class))
 
-
-
-(defn -main
-  "I don't do a whole lot ... yet."
-  [& args]
+(defn run
+  []
   (timbre/merge-config!
     {:ns-blacklist [
        ; Kafka's DEBUG is overly chatty.
@@ -23,13 +20,13 @@
           consumer 
           (KafkaConsumer.
             {"bootstrap.servers" (:global-kafka-bootstrap-servers env)     
-             ; The artifact corresponds provides the config for this instances.
-             ; So use the artifact name as the group name to ensure one group per instance.
-             "group.id" "pusher"
+             "group.id" "kafka-pusher"
              "key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer"
              "value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer"
              ; Always start from the beginning of time. 
-             ; This means ingesting a few weeks of data on startup, but it's quick.
+             ; This means ingesting a few weeks of data on startup, and possibly
+             ; ingesting the same Event twice. event-bus/post-event handles duplicates
+             ; so this won't cause an issue.
              "auto.offset.reset" "earliest"
              "fetch.max.bytes" "52428800"})]
 
@@ -39,9 +36,14 @@
      (loop []
        (let [^ConsumerRecords records (.poll consumer (int 1000))]
          (doseq [^ConsumerRecords record records]
-           (event-bus/post-event (json/read-str (.value record) :key-fn keyword))))
+           (let [event (json/read-str (.value record) :key-fn keyword)]
+             (log/info "Send" (:id event))
+             (event-bus/post-event event))))
         (recur)))
    
-  (catch Exception e (log/error "Error in Topic listener " (.getMessage e))))
+  (catch Exception e (log/error "Error in Topic listener" e)))
   (log/error "Stopped listening to Topic"))
 
+
+(defn -main [& args]
+  (run))
