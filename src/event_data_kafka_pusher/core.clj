@@ -36,7 +36,10 @@
      (loop []
        (let [^ConsumerRecords records (.poll consumer (int 1000))]
          (doseq [^ConsumerRecords record records]
-           (let [event (json/read-str (.value record) :key-fn keyword)]
+           (let [event (json/read-str (.value record) :key-fn keyword)
+                 ; Percolator addds a JWT field. Remove this, as it's a secret.
+                 ; The event-bus/post-event will generate the required JWT when it sends.
+                 event (dissoc event :jwt)]
              (log/info "Send" (:id event))
              (event-bus/post-event event))))
         (recur)))

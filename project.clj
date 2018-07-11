@@ -1,4 +1,4 @@
-(defproject event-data-kafka-pusher "0.1.1"
+(defproject event-data-kafka-pusher "0.1.2"
   :description "Crossref Event Data Kafka Pusher"
   :url "http://eventdata.crossref.org"
   :license {:name "The MIT License (MIT)"
